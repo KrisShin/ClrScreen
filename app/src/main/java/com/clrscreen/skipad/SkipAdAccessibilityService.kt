@@ -10,6 +10,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.Toast
 
 /**
  * 开屏广告自动跳过服务。
@@ -100,6 +101,9 @@ class SkipAdAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 // 新窗口（Activity 或对话框）出现，开始一轮限时扫描
                 lastWindowChangeAt = SystemClock.elapsedRealtime()
+                if (BuildConfig.DEBUG) {
+                    android.util.Log.d(TAG, "窗口切换 pkg=$pkg cls=${event.className}")
+                }
                 scheduleScans(pkg)
             }
 
@@ -131,17 +135,77 @@ class SkipAdAccessibilityService : AccessibilityService() {
         val now = SystemClock.elapsedRealtime()
         if (now - lastClickAt < CLICK_COOLDOWN_MS) return
 
-        val candidate = findBestCandidate(pkg) ?: return
+        val candidate = findBestCandidate(pkg)
+        if (candidate == null) {
+            // 诊断用：没有候选时，输出本轮扫描看到的最高分节点（不点击）
+            if (BuildConfig.DEBUG) logTopCandidate(pkg)
+            return
+        }
         if (clickNode(candidate.node)) {
             lastClickAt = SystemClock.elapsedRealtime()
             skipCount += 1
             cancelPendingScans()
+            showSkipToast()
             if (BuildConfig.DEBUG) {
                 android.util.Log.d(
                     TAG,
                     "已点击 pkg=$pkg score=${candidate.verdict.score} ${candidate.verdict.reasons}"
                 )
             }
+        }
+    }
+
+    /**
+     * 跳过成功时弹一条轻提示，便于用户确认功能已生效。
+     *
+     * 用 Toast 而不是通知：不打断操作、不占通知栏、几秒后自动消失。
+     * 可在主界面关闭。
+     */
+    private fun showSkipToast() {
+        if (!Prefs.isToastEnabled(this)) return
+        handler.post {
+            runCatching {
+                Toast.makeText(this, R.string.toast_skipped, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    /**
+     * 诊断辅助：未命中时输出得分最高的节点摘要。
+     *
+     * 只用于排查「为什么没点」，不参与判定。仅在 debug 构建生效。
+     */
+    private fun logTopCandidate(pkg: String) {
+        val root = rootInActiveWindow ?: return
+        if (root.packageName?.toString() != pkg) return
+
+        var bestScore = Int.MIN_VALUE
+        var bestDesc = ""
+        val queue = ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var visited = 0
+
+        while (queue.isNotEmpty() && visited < 400) {
+            val node = queue.removeFirst()
+            visited++
+            val snap = toSnapshot(node)
+            val verdict = SkipRuleEngine.evaluate(snap)
+            val score = when (verdict) {
+                is Verdict.Hit -> verdict.score
+                is Verdict.Miss -> verdict.score
+            }
+            // 只关心有文字/描述/ID 的节点，过滤纯容器
+            val label = snap.text.ifBlank { snap.contentDescription }
+            if (label.isNotBlank() && score > bestScore) {
+                bestScore = score
+                bestDesc = "text='${snap.text.take(24)}' desc='${snap.contentDescription.take(24)}' " +
+                    "id='${snap.viewId}' cls='${snap.className.substringAfterLast('.')}' " +
+                    "clickable=${snap.clickable} score=$score"
+            }
+            for (i in 0 until node.childCount) node.getChild(i)?.let { queue.add(it) }
+        }
+        if (bestDesc.isNotEmpty()) {
+            android.util.Log.d(TAG, "未命中 pkg=$pkg 最高分节点: $bestDesc")
         }
     }
 

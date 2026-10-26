@@ -21,3 +21,7 @@ release/
 # ===== 测试与临时产物 =====
 tools/result-*.csv
 docs/images/*.tmp
+
+# Python 缓存
+__pycache__/
+*.pyc

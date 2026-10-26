@@ -70,7 +70,7 @@ class AdScenarioActivity : Activity() {
         Scenario.TEXT_CORNER -> cornerSkip()
         Scenario.DESC_ONLY -> Button(this).apply {
             text = "关闭"
-            contentDescription = "跳过广告"
+            contentDescription = "跳过"
             layoutParams = bottomEnd()
             setOnClickListener { onClicked() }
         }
@@ -134,7 +134,7 @@ class AdScenarioActivity : Activity() {
                 }, bottomEnd())
             }, 8000)
         }
-        Scenario.CLOSE_AD_TEXT -> ignoreTextOrSkip("关闭广告")
+        Scenario.CLOSE_AD_TEXT -> ignoreTextOrSkip("关闭")
         Scenario.COUNTDOWN_PREFIX -> countdownButton(text = "5s | 跳过")
         Scenario.SKIP_IN_WEBVIEW -> webViewSkip()
         Scenario.FULLSCREEN_CLICKABLE -> fullscreenClickable()
@@ -265,7 +265,7 @@ class AdScenarioActivity : Activity() {
         setOnClickListener { onFalsePositive() }
     }
 
-    /** 「关闭广告」这类变体：既可能是跳过按钮，也可能是关闭弹窗，观察其行为 */
+    /** 「关闭」这类变体：既可能是跳过控件，也可能是关闭弹窗，观察其行为 */
     private fun ignoreTextOrSkip(text: String): View = TextView(this).apply {
         this.text = text
         textSize = 18f
@@ -303,7 +303,7 @@ class AdScenarioActivity : Activity() {
         setOnClickListener { onClicked() }
     }
 
-    /** WebView 内渲染的 H5 广告跳过按钮 */
+    /** WebView 内渲染的 H5 跳过控件 */
     private fun webViewSkip(): View = WebView(this).apply {
         layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,

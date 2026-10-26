@@ -35,7 +35,7 @@ enum class Scenario(
     DESC_ONLY(
         id = "desc_only",
         title = "仅无障碍描述",
-        desc = "按钮上写「关闭」，但 contentDescription 为「跳过广告」。",
+        desc = "按钮上写「关闭」，但 contentDescription 为「跳过」。",
         expectSkip = true,
     ),
     VIEW_ID_SKIP(
@@ -139,8 +139,8 @@ enum class Scenario(
 
     CLOSE_AD_TEXT(
         id = "close_ad_text",
-        title = "「关闭广告」按钮",
-        desc = "部分广告不写「跳过」，而是「关闭广告」或「关闭」配 X 图标。",
+        title = "「关闭」按钮",
+        desc = "部分启动画面不写「跳过」，而是「关闭」配 X 图标。",
         expectSkip = true,
     ),
     COUNTDOWN_PREFIX(

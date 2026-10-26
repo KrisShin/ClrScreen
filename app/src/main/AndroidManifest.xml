@@ -52,7 +52,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="保持开屏广告跳过服务在后台可用" />
+                android:value="保持开屏提醒服务在后台可用" />
         </service>
 
         <!-- 开机后恢复常驻通知（无障碍服务本身由系统自动恢复，不依赖此广播） -->

@@ -1,15 +1,18 @@
-# ClrScreen 跳广告
+# ClrScreen
+
+<img src="docs/images/app-icon-192.png" width="96" alt="ClrScreen 图标">
 
 [![Release](https://github.com/KrisShin/ClrScreen/actions/workflows/release.yml/badge.svg)](https://github.com/KrisShin/ClrScreen/actions/workflows/release.yml)
 [![Latest Release](https://img.shields.io/github/v/release/KrisShin/ClrScreen)](https://github.com/KrisShin/ClrScreen/releases/latest)
 
-一个开屏广告自动跳过工具。基于 Android 无障碍服务，在 App 启动出现开屏广告时自动点击「跳过」按钮。
+一个开屏提醒自动跳过工具。基于 Android 无障碍服务，在 App 启动画面出现时自动识别并点击跳过控件。
 
-**不联网、无广告、无第三方依赖、纯本机运行。** 保活所需的 5 个权限均不涉及网络。
+**不联网、无第三方依赖、纯本机运行。** 保活所需的 5 个权限均不涉及网络。
 
+- 应用名：`ClrScreen`
 - 包名：`com.clrscreen.skipad`
 - 最低支持：Android 7.0（API 24）｜编译/目标：API 34
-- 当前版本：1.2（versionCode 3）
+- 当前版本：1.3（versionCode 4）
 - 判定方式：评分制（7 类信号加权 + 排除词一票否决）
 
 **下载**：[最新 Release](https://github.com/KrisShin/ClrScreen/releases/latest) —— 已签名，可直接安装覆盖升级。
@@ -86,9 +89,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 | 评分制识别 | 文案/描述/控件ID/位置/尺寸/可点击性加权打分，总分 ≥ 50 才点击 |
 | 排除词一票否决 | 「跳过此步骤」「跳过教程」「跳过片头」等直接排除，不参与打分 |
 | 三级点击策略 | WebView 优先手势；原生控件 performAction → 祖先回溯 → 手势兜底 |
-| 多窗口扫描 | 遍历 `getWindows()`，不只看活动窗口，覆盖悬浮层广告 |
+| 多窗口扫描 | 遍历 `getWindows()`，不只看活动窗口，覆盖悬浮层 |
 | 密集重扫 | 定时扫描 0~6.5 秒共 11 次，之后靠内容变化事件持续到 8 秒 |
 | 后台保活 | 前台服务常驻通知 + 电池优化白名单 + 开机自恢复 + 厂商自启动引导 |
+| 跳过反馈 | 跳过时弹轻提示（Toast），可在设置中关闭 |
 | 完全离线 | 不申请 `INTERNET` 权限，无任何网络代码 |
 | 零第三方依赖 | release 包约 620 KB |
 
@@ -124,7 +128,7 @@ pwsh -File tools/run-scenarios.ps1 -Label final
 | 倒计时结束后才可点 | ✅ |
 | 透明遮罩上的跳过 | ✅ |
 | 6 层嵌套节点 | ✅ |
-| 「关闭广告」变体 | ✅ |
+| 「关闭」类变体 | ✅ |
 | 「5s \| 跳过」组合文案 | ✅ |
 | WebView 内 H5 按钮 | ✅ |
 | 全屏可点区域中的跳过 | ✅ |

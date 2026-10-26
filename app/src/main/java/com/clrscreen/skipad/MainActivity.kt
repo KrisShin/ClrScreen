@@ -22,6 +22,7 @@ class MainActivity : Activity() {
     private lateinit var countText: TextView
     private lateinit var batteryStatus: TextView
     private lateinit var keepAliveSwitch: Switch
+    private lateinit var toastSwitch: Switch
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,6 +32,7 @@ class MainActivity : Activity() {
         countText = findViewById(R.id.countText)
         batteryStatus = findViewById(R.id.batteryStatus)
         keepAliveSwitch = findViewById(R.id.switchKeepAlive)
+        toastSwitch = findViewById(R.id.switchToast)
 
         findViewById<Button>(R.id.btnOpenSettings).setOnClickListener {
             KeepAliveHelper.openAccessibilitySettings(this)
@@ -57,6 +59,14 @@ class MainActivity : Activity() {
                 KeepAliveService.start(this)
             } else {
                 KeepAliveService.stop(this)
+            }
+        }
+
+        toastSwitch.setOnCheckedChangeListener { _, checked ->
+            Prefs.setToastEnabled(this, checked)
+            // 打开时立刻演示一次，让用户知道效果
+            if (checked) {
+                Toast.makeText(this, R.string.toast_skipped, Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -87,6 +97,7 @@ class MainActivity : Activity() {
         )
 
         keepAliveSwitch.isChecked = Prefs.isKeepAliveEnabled(this)
+        toastSwitch.isChecked = Prefs.isToastEnabled(this)
     }
 
     /** Android 13+ 需要用户授予通知权限，否则前台服务的常驻通知不可见 */

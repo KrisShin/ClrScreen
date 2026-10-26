@@ -1,21 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ClrScreen 应用图标（扁平风格 · 第 2 版）
+
+  构图：
+    - 圆角方形底：青→蓝线性渐变
+    - 中间：**较瘦**的白色手机边框（宽 40，高 66，接近现代手机比例）
+    - 手机内：白色扫帚，**斜放**（旋转 20°），扫帚头下缘为**弧形**（弯曲）
+    - 右上角：一大一小两颗四角十字星，**相互靠近**；
+      大星**压在手机边框上**，但星与边框之间用背景渐变描边**留出空隙**，避免粘连
+
+  关于「留白」的实现：
+    先画一颗放大的「间隙星」，填充与背景**完全相同的渐变**（同 startX/endX），
+    它会把底下的手机边框"擦"掉一圈；再在上面画白色实体星。
+    这样空隙的颜色和背景严丝合缝，不会有色块感。
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="48dp"
-    android:height="48dp"
-    android:viewportWidth="48"
-    android:viewportHeight="48">
-    <!-- 圆角蓝底 -->
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- ===== 1. 背景：圆角方形 + 青蓝渐变 ===== -->
     <path
-        android:fillColor="#1E88E5"
-        android:pathData="M10,4 h28 a6,6 0 0 1 6,6 v28 a6,6 0 0 1 -6,6 h-28 a6,6 0 0 1 -6,-6 v-28 a6,6 0 0 1 6,-6 z" />
-    <!-- 快进双三角 + 竖条（跳过符号） -->
+        android:pathData="M20,4 L88,4 A16,16 0 0 1 104,20 L104,88 A16,16 0 0 1 88,104 L20,104 A16,16 0 0 1 4,88 L4,20 A16,16 0 0 1 20,4 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="4" android:startY="4"
+                android:endX="104" android:endY="104">
+                <item android:offset="0.0" android:color="#FF5DD5F5" />
+                <item android:offset="0.5" android:color="#FF2196F3" />
+                <item android:offset="1.0" android:color="#FF1450C8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ===== 2. 手机屏幕底色（半透明白，提亮内部） ===== -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M11,15 L23,24 L11,33 Z" />
+        android:pathData="M42,26 L66,26 A4,4 0 0 1 70,30 L70,76 A4,4 0 0 1 66,80 L42,80 A4,4 0 0 1 38,76 L38,30 A4,4 0 0 1 42,26 Z"
+        android:fillColor="#33FFFFFF" />
+
+    <!-- ===== 3. 扫帚（斜放 20°，扫帚头下缘带弧度） ===== -->
+    <group
+        android:rotation="20"
+        android:pivotX="54"
+        android:pivotY="52">
+
+        <!-- 手柄 -->
+        <path
+            android:pathData="M54,31 L54,52"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="4.5"
+            android:strokeLineCap="round" />
+
+        <!-- 扎带（手柄与刷毛的连接处） -->
+        <path
+            android:pathData="M48,50 L60,50 L60,55 L48,55 Z"
+            android:fillColor="#FFFFFFFF" />
+
+        <!-- 刷毛：下缘用二次曲线做出明显的"弯曲"扫把头 -->
+        <path
+            android:pathData="M47,55 L61,55 L67,66 Q55,79 41,66 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="54" android:startY="55"
+                    android:endX="54" android:endY="74">
+                    <item android:offset="0.0" android:color="#FFFFFFFF" />
+                    <item android:offset="1.0" android:color="#FFD6EEFF" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- 刷毛分缝（顺着下缘弧度收尾） -->
+        <path
+            android:pathData="M50.5,58 L49,69"
+            android:strokeColor="#FF4FA8F0"
+            android:strokeWidth="1.6"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M54,58 L54,72"
+            android:strokeColor="#FF4FA8F0"
+            android:strokeWidth="1.6"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M57.5,58 L59,69"
+            android:strokeColor="#FF4FA8F0"
+            android:strokeWidth="1.6"
+            android:strokeLineCap="round" />
+    </group>
+
+    <!-- ===== 4. 手机外框（描边，瘦长） ===== -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M24,15 L36,24 L24,33 Z" />
+        android:pathData="M41,20 L67,20 A7,7 0 0 1 74,27 L74,79 A7,7 0 0 1 67,86 L41,86 A7,7 0 0 1 34,79 L34,27 A7,7 0 0 1 41,20 Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.5"
+        android:fillColor="#00000000" />
+
+    <!-- ===== 5. 听筒 ===== -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M37,15 h4 v18 h-4 z" />
+        android:pathData="M49,24.5 L59,24.5"
+        android:strokeColor="#D9FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+    <!-- ===== 6. 间隙星：用背景渐变填充，把手机边框"擦"出一圈空隙 ===== -->
+    <path
+        android:pathData="M78,4.5 Q78,22 95.5,22 Q78,22 78,39.5 Q78,22 60.5,22 Q78,22 78,4.5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="4" android:startY="4"
+                android:endX="104" android:endY="104">
+                <item android:offset="0.0" android:color="#FF5DD5F5" />
+                <item android:offset="0.5" android:color="#FF2196F3" />
+                <item android:offset="1.0" android:color="#FF1450C8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ===== 7. 大十字星（放大，压在边框上，靠上面的间隙与边框分开） ===== -->
+    <path
+        android:pathData="M78,9 Q78,22 91,22 Q78,22 78,35 Q78,22 65,22 Q78,22 78,9 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="65" android:startY="9"
+                android:endX="91" android:endY="35">
+                <item android:offset="0.0" android:color="#FFFFFFFF" />
+                <item android:offset="1.0" android:color="#FFFFF0B8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- ===== 8. 小十字星（放大，靠近大星） ===== -->
+    <path
+        android:pathData="M93,1.5 Q93,9.5 101,9.5 Q93,9.5 93,17.5 Q93,9.5 85,9.5 Q93,9.5 93,1.5 Z"
+        android:fillColor="#F2FFFFFF" />
 </vector>

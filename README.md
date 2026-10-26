@@ -1,5 +1,8 @@
 # ClrScreen 跳广告
 
+[![Release](https://github.com/KrisShin/ClrScreen/actions/workflows/release.yml/badge.svg)](https://github.com/KrisShin/ClrScreen/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/KrisShin/ClrScreen)](https://github.com/KrisShin/ClrScreen/releases/latest)
+
 一个开屏广告自动跳过工具。基于 Android 无障碍服务，在 App 启动出现开屏广告时自动点击「跳过」按钮。
 
 **不联网、无广告、无第三方依赖、纯本机运行。** 保活所需的 5 个权限均不涉及网络。
@@ -8,6 +11,8 @@
 - 最低支持：Android 7.0（API 24）｜编译/目标：API 34
 - 当前版本：1.2（versionCode 3）
 - 判定方式：评分制（7 类信号加权 + 排除词一票否决）
+
+**下载**：[最新 Release](https://github.com/KrisShin/ClrScreen/releases/latest) —— 已签名，可直接安装覆盖升级。
 
 ---
 

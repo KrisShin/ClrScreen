@@ -22,3 +22,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "ClrScreen"
 include(":app")
+
+// 测试靶场：模拟各种开屏广告形态，仅用于验证识别能力，不随正式包分发
+include(":demo")

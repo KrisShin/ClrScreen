@@ -15,7 +15,10 @@ import android.view.accessibility.AccessibilityNodeInfo
  * 开屏广告自动跳过服务。
  *
  * 原理：监听前台窗口变化，在窗口出现后的短时间内扫描界面节点树，
- * 找到“跳过 / 跳過 / skip”类控件后自动点击。纯本机运行，无任何网络行为。
+ * 对候选节点做**评分**，达到阈值才点击。纯本机运行，无任何网络行为。
+ *
+ * 相比早期版本（命中任一关键词就点），现在的判定是评分制：
+ * 多个弱信号可以叠加命中，单个强信号遇到排除词会被直接否决。
  */
 class SkipAdAccessibilityService : AccessibilityService() {
 
@@ -29,23 +32,21 @@ class SkipAdAccessibilityService : AccessibilityService() {
         var skipCount: Int = 0
             private set
 
-        /** “跳过”文案的最大长度：超过的大概率是说明文字而不是按钮 */
-        private const val MAX_TEXT_LENGTH = 12
-
         /** 点击成功后的冷却时间，避免同一界面被重复点击 */
-        private const val CLICK_COOLDOWN_MS = 1500L
+        private const val CLICK_COOLDOWN_MS = 1200L
 
         /** TYPE_WINDOW_CONTENT_CHANGED 触发极频繁，需要节流 */
-        private const val CONTENT_EVENT_THROTTLE_MS = 250L
+        private const val CONTENT_EVENT_THROTTLE_MS = 200L
 
-        /** 仅在窗口切换后该时间内响应内容变化：开屏广告只出现在启动瞬间，
-         *  限时扫描可以把误点正常界面中“跳过”文案（如教程里的“跳过此步骤”）的概率降到最低 */
-        private const val SPLASH_WATCH_WINDOW_MS = 6000L
+        /** 窗口切换后持续观察的时长。开屏广告只在启动瞬间出现，
+         *  限时观察可以把误点正常界面中「跳过」文案的概率降到最低 */
+        private const val SPLASH_WATCH_WINDOW_MS = 8000L
 
-        /** 窗口切换后的多次扫描时间点（毫秒）：跳过按钮常常随广告异步渲染，延迟出现 */
-        private val SCAN_DELAYS_MS = longArrayOf(0, 300, 700, 1200, 1800, 2600)
+        /** 窗口切换后的多次扫描时间点（毫秒）：跳过按钮常随广告异步渲染，延迟出现。
+         *  覆盖到 6.5s，兼顾慢速广告与 WebView 加载 */
+        private val SCAN_DELAYS_MS = longArrayOf(0, 250, 600, 1000, 1500, 2100, 2800, 3600, 4500, 5600, 6500)
 
-        /** 系统包：这些包里的“跳过”属于系统流程（开机向导等），绝不能自动点击 */
+        /** 系统包：这些包里的「跳过」属于系统流程（开机向导等），绝不能自动点击 */
         private val SYSTEM_PACKAGES = setOf(
             "com.android.systemui",
             "com.android.settings",
@@ -55,6 +56,9 @@ class SkipAdAccessibilityService : AccessibilityService() {
             "com.google.android.setupwizard",
             "com.google.android.packageinstaller",
         )
+
+        /** 命中阈值，与 [SkipRuleEngine.CLICK_THRESHOLD] 保持一致 */
+        private val CLICK_THRESHOLD = SkipRuleEngine.CLICK_THRESHOLD
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -62,10 +66,15 @@ class SkipAdAccessibilityService : AccessibilityService() {
     private var lastClickAt = 0L
     private var lastContentScanAt = 0L
     private var lastWindowChangeAt = 0L
+    private var screenWidth = 0
+    private var screenHeight = 0
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        val metrics = resources.displayMetrics
+        screenWidth = metrics.widthPixels
+        screenHeight = metrics.heightPixels
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
@@ -102,9 +111,7 @@ class SkipAdAccessibilityService : AccessibilityService() {
                 tryScanAndClick(pkg)
             }
 
-            else -> {
-                // 服务配置只订阅了窗口切换与内容变化两类事件，这里显式忽略其余类型
-            }
+            else -> Unit
         }
     }
 
@@ -123,72 +130,168 @@ class SkipAdAccessibilityService : AccessibilityService() {
     private fun tryScanAndClick(pkg: String) {
         val now = SystemClock.elapsedRealtime()
         if (now - lastClickAt < CLICK_COOLDOWN_MS) return
-        val root = rootInActiveWindow ?: return
-        if (root.packageName?.toString() != pkg) return
 
-        val target = findSkipNode(root) ?: return
-        if (clickNode(target)) {
+        val candidate = findBestCandidate(pkg) ?: return
+        if (clickNode(candidate.node)) {
             lastClickAt = SystemClock.elapsedRealtime()
             skipCount += 1
             cancelPendingScans()
+            if (BuildConfig.DEBUG) {
+                android.util.Log.d(
+                    TAG,
+                    "已点击 pkg=$pkg score=${candidate.verdict.score} ${candidate.verdict.reasons}"
+                )
+            }
         }
     }
 
-    /** 广度优先遍历节点树，优先返回自身可点击的“跳过”节点 */
-    private fun findSkipNode(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+    /**
+     * 在所有窗口中寻找得分最高的候选节点。
+     *
+     * 之所以遍历 [getWindows] 而不只是 [rootInActiveWindow]：
+     * 开屏广告常以独立窗口 / 悬浮层形式存在，活动窗口的根节点可能取不到它。
+     */
+    private fun findBestCandidate(pkg: String): Candidate? {
+        var best: Candidate? = null
+
+        val roots = ArrayList<AccessibilityNodeInfo>()
+        rootInActiveWindow?.let { roots.add(it) }
+        runCatching {
+            windows?.forEach { w ->
+                w.root?.let { r -> if (roots.none { it == r }) roots.add(r) }
+            }
+        }
+
+        for (root in roots) {
+            val rootPkg = root.packageName?.toString() ?: continue
+            // 只扫描当前前台应用的窗口；系统窗口与其它应用不参与，
+            // 避免在切换过程中误点别的界面
+            if (rootPkg != pkg) continue
+            collectCandidates(root, best)?.let { best = it }
+        }
+        return best
+    }
+
+    /** BFS 遍历，返回本轮更优的候选 */
+    private fun collectCandidates(
+        root: AccessibilityNodeInfo,
+        currentBest: Candidate?,
+    ): Candidate? {
+        var best = currentBest
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
-        var fallback: AccessibilityNodeInfo? = null
+
         while (queue.isNotEmpty()) {
             val node = queue.removeFirst()
-            if (matchesSkip(node)) {
-                if (node.isClickable) return node
-                if (fallback == null) fallback = node
+
+            val verdict = SkipRuleEngine.evaluate(toSnapshot(node))
+            if (verdict is Verdict.Hit) {
+                if (best == null || verdict.score > best.verdict.score) {
+                    best = Candidate(node, verdict)
+                }
+                // 高分候选已足够可靠，无需继续遍历
+                if (verdict.score >= 90) return best
             }
+
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { queue.add(it) }
             }
         }
-        return fallback
+        return best
     }
 
-    private fun matchesSkip(node: AccessibilityNodeInfo): Boolean {
-        // 控件 id 含 skip（如 tv_skip / btn_skip）是很强的信号
-        val viewId = node.viewIdResourceName?.substringAfterLast('/')?.lowercase()
-        if (!viewId.isNullOrEmpty() && viewId.contains("skip")) return true
+    /** 把 AccessibilityNodeInfo 转成不依赖框架的快照 */
+    private fun toSnapshot(node: AccessibilityNodeInfo): NodeSnapshot {
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
 
-        val text = node.text?.toString()?.trim().orEmpty()
-        if (text.isNotEmpty() && isSkipText(text)) return true
-        val desc = node.contentDescription?.toString()?.trim().orEmpty()
-        if (desc.isNotEmpty() && isSkipText(desc)) return true
+        return NodeSnapshot(
+            text = node.text?.toString().orEmpty(),
+            contentDescription = node.contentDescription?.toString().orEmpty(),
+            viewId = node.viewIdResourceName?.substringAfterLast('/')?.lowercase().orEmpty(),
+            className = node.className?.toString().orEmpty(),
+            clickable = node.isClickable,
+            hasClickableAncestor = hasClickableAncestor(node),
+            enabled = node.isEnabled,
+            visible = node.isVisibleToUser,
+            left = bounds.left,
+            top = bounds.top,
+            right = bounds.right,
+            bottom = bounds.bottom,
+            screenWidth = screenWidth,
+            screenHeight = screenHeight,
+        )
+    }
+
+    /** 向上最多找 4 层，判断是否存在可点击祖先 */
+    private fun hasClickableAncestor(node: AccessibilityNodeInfo): Boolean {
+        var parent = node.parent
+        var depth = 0
+        while (parent != null && depth < 4) {
+            if (parent.isClickable) return true
+            parent = parent.parent
+            depth++
+        }
         return false
     }
 
-    /** 匹配 “跳过 / 跳过广告 / 3s后跳过 / Skip 5” 等文案 */
-    private fun isSkipText(raw: String): Boolean {
-        if (raw.length > MAX_TEXT_LENGTH) return false
-        val collapsed = raw.replace("\\s".toRegex(), "")
-        return collapsed.contains("跳过") ||
-            collapsed.contains("跳過") ||
-            collapsed.contains("skip", ignoreCase = true)
+    /**
+     * 点击目标节点。
+     *
+     * 顺序上有讲究：`performAction(ACTION_CLICK)` 在标准 Android 控件上可靠，
+     * 但在 **WebView / 自绘控件** 上会返回 true 却什么都不做（实测确认：
+     * WebView 里的 H5 按钮，performAction 返回成功但网页没有任何反应，
+     * 而同样坐标的手势点击可以正常触发）。
+     *
+     * 因此对 WebView 内的节点优先用手势，避免「以为点成功了、其实没点」，
+     * 这会导致计数虚增且广告没跳过。
+     */
+    private fun clickNode(node: AccessibilityNodeInfo): Boolean {
+        if (isInsideWebView(node)) {
+            // WebView 内优先手势，失败再退回 performAction
+            if (tapCenter(node)) return true
+            return performClickUpwards(node)
+        }
+
+        if (performClickUpwards(node)) return true
+        // 自绘控件兜底：手势点击坐标
+        return tapCenter(node)
     }
 
-    /** 依次尝试：自身 performAction 点击 → 向上找可点击祖先 → 模拟手势点击坐标 */
-    private fun clickNode(node: AccessibilityNodeInfo): Boolean {
+    /** performAction 沿祖先链向上尝试 */
+    private fun performClickUpwards(node: AccessibilityNodeInfo): Boolean {
         var current: AccessibilityNodeInfo? = node
-        while (current != null) {
+        var depth = 0
+        while (current != null && depth < 6) {
             if (current.isClickable &&
                 current.performAction(AccessibilityNodeInfo.ACTION_CLICK)
             ) {
                 return true
             }
             current = current.parent
+            depth++
         }
-        // 部分广告页用 WebView/自绘控件，performAction 无效，用手势兜底
+        return false
+    }
+
+    /** 手势点击节点中心 */
+    private fun tapCenter(node: AccessibilityNodeInfo): Boolean {
         val bounds = Rect()
         node.getBoundsInScreen(bounds)
         if (bounds.isEmpty) return false
         return dispatchTap(bounds.exactCenterX(), bounds.exactCenterY())
+    }
+
+    /** 判断节点是否位于 WebView 内部（沿祖先链最多查 8 层） */
+    private fun isInsideWebView(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node
+        var depth = 0
+        while (current != null && depth < 8) {
+            if (current.className?.toString()?.contains("WebView") == true) return true
+            current = current.parent
+            depth++
+        }
+        return false
     }
 
     private fun dispatchTap(x: Float, y: Float): Boolean {
@@ -211,4 +314,12 @@ class SkipAdAccessibilityService : AccessibilityService() {
         cancelPendingScans()
         if (instance === this) instance = null
     }
+
+    private data class Candidate(
+        val node: AccessibilityNodeInfo,
+        val verdict: Verdict.Hit,
+    )
 }
+
+/** 日志 TAG，与 [SkipAdAccessibilityService] 共用 */
+private const val TAG = "ClrScreen"

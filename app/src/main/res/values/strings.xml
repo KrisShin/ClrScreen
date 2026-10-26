@@ -3,10 +3,38 @@
     <string name="app_name">ClrScreen 跳广告</string>
     <string name="accessibility_service_label">跳过开屏广告</string>
     <string name="accessibility_service_description">检测到应用开屏广告界面中的“跳过”按钮时自动点击，帮你跳过开屏广告。本服务完全在本机运行，不联网、不采集、不上传任何数据。</string>
+
+    <!-- 服务状态 -->
     <string name="service_on">✔ 无障碍服务已开启，正在后台守护</string>
     <string name="service_off">✖ 无障碍服务未开启</string>
     <string name="open_settings">去开启无障碍服务</string>
-    <string name="skip_count">本次开机以来已自动跳过 %1$d 次开屏广告</string>
+    <string name="skip_count">本次运行以来已自动跳过 %1$d 次开屏广告</string>
+
+    <!-- 保活相关 -->
+    <string name="keep_alive_channel_name">后台守护</string>
+    <string name="keep_alive_channel_desc">保持跳过服务运行所需的常驻通知</string>
+    <string name="keep_alive_title">ClrScreen 正在守护</string>
+    <string name="keep_alive_text">开屏广告将被自动跳过</string>
+
+    <string name="battery_title">电池优化</string>
+    <string name="battery_ok">✔ 已加入电池优化白名单</string>
+    <string name="battery_off">✖ 未加入白名单，后台可能被系统冻结</string>
+    <string name="battery_action">申请忽略电池优化</string>
+    <string name="battery_fallback">已为你打开电池优化设置，请手动找到本应用并选择「不优化」</string>
+
+    <string name="autostart_title">自启动 / 后台运行</string>
+    <string name="autostart_hint">部分系统（小米、华为、OPPO、vivo 等）需要在系统设置里允许本应用自启动，否则重启后可能失效。此项无法通过应用自动完成，需要你手动确认。</string>
+    <string name="autostart_action">前往自启动设置</string>
+    <string name="autostart_fallback">未找到本机自启动设置页，已打开应用详情，请手动在「权限」或「电池」中允许后台运行</string>
+
+    <!-- 保活区块标题与说明 -->
+    <string name="keepalive_section_title">后台保活</string>
+    <string name="keepalive_section_desc">以下设置可降低服务被系统清理的概率。无障碍服务本身由系统托管，重启后会自动恢复。</string>
+    <string name="keepalive_switch_label">常驻通知（前台服务）</string>
+    <string name="keepalive_switch_hint">开启后状态栏会显示一条低优先级通知，可将进程优先级提升为前台，显著降低被回收概率。</string>
+    <string name="reboot_note">无障碍服务由系统托管，手机重启后会自动恢复，无需手动重新开启。</string>
+
+    <!-- 使用说明 -->
     <string name="help_title">使用说明</string>
-    <string name="help_text">1. 点击上方按钮，在系统设置中找到“跳过开屏广告”并开启；\n\n2. 开启后无需任何操作，打开其他 App 时会自动点击开屏广告右下角的“跳过”按钮；\n\n3. 本应用不申请任何权限、不联网、无广告，完全离线运行；\n\n4. 部分应用的广告没有跳过按钮，或跳过按钮使用特殊绘制方式，可能无法识别，属正常现象。</string>
+    <string name="help_text">1. 点击上方按钮，在系统设置中找到“跳过开屏广告”并开启；\n\n2. 开启后无需任何操作，打开其他 App 时会自动识别并点击开屏广告的跳过按钮；\n\n3. 建议同时完成“电池优化白名单”和“自启动”两项设置，避免后台被系统清理；\n\n4. 本应用不申请网络权限，无广告，完全离线运行；\n\n5. 部分广告的跳过按钮为图片或自绘控件，无障碍无法识别，属正常现象。</string>
 </resources>

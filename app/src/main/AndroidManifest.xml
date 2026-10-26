@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 本应用不申请任何权限（包括 INTERNET），安装后完全离线运行 -->
+    <!--
+        权限说明（全部为保活所需，均不涉及网络）：
+        - FOREGROUND_SERVICE：Android 9+ 启动前台服务的前提
+        - FOREGROUND_SERVICE_SPECIAL_USE：Android 14+ 前台服务类型声明
+        - POST_NOTIFICATIONS：Android 13+ 前台服务常驻通知需要
+        - REQUEST_IGNORE_BATTERY_OPTIMIZATIONS：申请加入电池优化白名单
+        - RECEIVE_BOOT_COMPLETED：开机后恢复常驻通知
+        本应用仍然不申请 INTERNET，无法联网。
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -31,5 +44,27 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+
+        <!-- 前台守护服务：常驻通知降低被回收概率 -->
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="保持开屏广告跳过服务在后台可用" />
+        </service>
+
+        <!-- 开机后恢复常驻通知（无障碍服务本身由系统自动恢复，不依赖此广播） -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

@@ -8,3 +8,16 @@ captures/
 .externalNativeBuild/
 .cxx/
 .zcode/
+
+# ===== 签名与密钥：绝对不要提交 =====
+# keystore.properties 含明文密码；*.jks / *.keystore 是私钥本体
+keystore.properties
+*.jks
+*.keystore
+*.p12
+signing/
+release/
+
+# ===== 测试与临时产物 =====
+tools/result-*.csv
+docs/images/*.tmp

@@ -1,0 +1,126 @@
+name: Release
+
+# 触发方式：推送 v* 形式的 tag（如 v1.2.0）
+# 也支持手动触发，用于验证流水线而不发版
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只构建不发布（不创建 Release）'
+        type: boolean
+        default: true
+
+# 同一 tag 只允许一个发布流程在跑，避免并发写 Release
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # 创建 Release 需要
+
+jobs:
+  build:
+    name: 构建并签名 APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 配置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 配置 Gradle 缓存
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      # 签名材料从 Secrets 还原到临时目录，绝不落进仓库
+      - name: 还原 keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::缺少 secret KEYSTORE_BASE64，无法签名发布"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/signing"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/signing/release.jks"
+          ls -l "$RUNNER_TEMP/signing/release.jks"
+
+      - name: 构建 release APK
+        env:
+          SIGNING_STORE_FILE: ${{ runner.temp }}/signing/release.jks
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: 校验签名
+        run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -f "$APK" || { echo "::error::未找到 $APK"; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose "$APK"
+          echo "APK 大小: $(du -h "$APK" | cut -f1)"
+
+      - name: 重命名产物
+        id: rename
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # 手动触发时没有 tag，用版本号占位
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$GITHUB_REF_NAME" ]; then
+            VERSION="dev-${GITHUB_SHA::7}"
+          fi
+          OUT="ClrScreen-${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$OUT"
+          echo "apk_path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "产物: $OUT"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClrScreen-apk
+          path: ${{ steps.rename.outputs.apk_path }}
+          retention-days: 30
+
+      - name: 创建 GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.rename.outputs.apk_path }}
+          name: ClrScreen ${{ steps.rename.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          body: |
+            ## 安装说明
+
+            1. 下载下方的 `ClrScreen-${{ steps.rename.outputs.version }}.apk`
+            2. 在手机上允许「未知来源应用」安装
+            3. 打开 App → 点击「去开启无障碍服务」→ 找到「跳过开屏广告」并开启
+            4. 建议同时完成「电池优化白名单」和「自启动」设置
+
+            > 本 APK 已用项目密钥签名，可直接覆盖升级旧版本。
+
+            ## 系统要求
+
+            Android 7.0（API 24）及以上。
+
+            ## 权限说明
+
+            保活需要 5 个权限（前台服务、通知、电池优化、开机广播），**均不涉及网络**。
+            应用不申请 `INTERNET` 权限，无法联网。

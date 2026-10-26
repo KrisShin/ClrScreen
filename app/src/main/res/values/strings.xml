@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ClrScreen 跳广告</string>
+    <string name="accessibility_service_label">跳过开屏广告</string>
+    <string name="accessibility_service_description">检测到应用开屏广告界面中的“跳过”按钮时自动点击，帮你跳过开屏广告。本服务完全在本机运行，不联网、不采集、不上传任何数据。</string>
+    <string name="service_on">✔ 无障碍服务已开启，正在后台守护</string>
+    <string name="service_off">✖ 无障碍服务未开启</string>
+    <string name="open_settings">去开启无障碍服务</string>
+    <string name="skip_count">本次开机以来已自动跳过 %1$d 次开屏广告</string>
+    <string name="help_title">使用说明</string>
+    <string name="help_text">1. 点击上方按钮，在系统设置中找到“跳过开屏广告”并开启；\n\n2. 开启后无需任何操作，打开其他 App 时会自动点击开屏广告右下角的“跳过”按钮；\n\n3. 本应用不申请任何权限、不联网、无广告，完全离线运行；\n\n4. 部分应用的广告没有跳过按钮，或跳过按钮使用特殊绘制方式，可能无法识别，属正常现象。</string>
+</resources>

@@ -6,7 +6,7 @@
 
 - 包名：`com.clrscreen.skipad`
 - 最低支持：Android 7.0（API 24）｜编译/目标：API 34
-- 当前版本：1.1（versionCode 2）
+- 当前版本：1.2（versionCode 3）
 - 判定方式：评分制（7 类信号加权 + 排除词一票否决）
 
 ---

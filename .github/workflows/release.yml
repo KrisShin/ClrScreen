@@ -29,18 +29,18 @@ jobs:
 
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: 配置 JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
       - name: 配置 Gradle 缓存
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v6
         with:
           cache-read-only: false
 
@@ -90,7 +90,7 @@ jobs:
           echo "产物: $OUT"
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ClrScreen-apk
           path: ${{ steps.rename.outputs.apk_path }}
@@ -98,7 +98,7 @@ jobs:
 
       - name: 创建 GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') && github.event.inputs.dry_run != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.rename.outputs.apk_path }}
           name: ClrScreen ${{ steps.rename.outputs.version }}
